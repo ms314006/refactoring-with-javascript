@@ -281,7 +281,191 @@ const statement = (invoice, plays) => {
 ```
 > 將取得 paly 的部分使用 [Replace Temp with Query](https://memberservices.informit.com/my_account/webedition/9780135425664/html/replacetempwithquery.html) 搭配 [Inline Variable](https://memberservices.informit.com/my_account/webedition/9780135425664/html/inlinevariable.html) 寫後，每一次迴圈的執行 `plays[aPerformance.playID]` 的次數從一變成三。
 
+#### thisAmount 也透過 [Inline Variable](https://memberservices.informit.com/my_account/webedition/9780135425664/html/inlinevariable.html) 方式修改
+```javascript
+const statement = (invoice, plays) => {
 
+  const playFor = aPerformance => plays[aPerformance.playID];
+
+  const amountFor = (perf, play) => { /*...*/ }
+
+  let totalAmount = 0;
+  let volumeCredits = 0;
+  let result = `Statement for ${invoice.customer}\n`;
+  const formatUSD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, }).format;
+
+  for (let i = 0; i <= invoice.performances.length - 1; i += 1) {
+    const perf = invoice.performances[i];
+
+    volumeCredits += Math.max(perf.audience - 30, 0);
+
+    if (playFor(perf).type === 'comedy') {
+      volumeCredits += Math.floor(perf.audience / 5);
+    }
+
+    result += `  ${playFor(perf).name}: ${formatUSD(amountFor(perf) / 100)} (${perf.audience} seats)\n`;
+    totalAmount += amountFor(perf);
+  }
+  result += `Amount owed is ${formatUSD(totalAmount / 100)}\n`;
+  result += `You earned ${volumeCredits} credits\n`;
+  return result;
+```
+
+#### 抽出計算 volumeCredits 的邏輯
+```javascript
+const statement = (invoice, plays) => {
+
+  const playFor = aPerformance => plays[aPerformance.playID];
+
+  const amountFor = (perf, play) => { /*...*/ }
+
+  const volumeCreditsFor = (aPerformance) => {
+    let result = 0;
+    result += Math.max(aPerformance.audience - 30, 0);
+
+    if (playFor(aPerformance).type === 'comedy') {
+      result += Math.floor(aPerformance.audience / 5);
+    }
+
+    return result;
+  }
+
+  let totalAmount = 0;
+  let volumeCredits = 0;
+  let result = `Statement for ${invoice.customer}\n`;
+  const formatUSD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, }).format;
+
+  for (let i = 0; i <= invoice.performances.length - 1; i += 1) {
+    const perf = invoice.performances[i];
+
+    volumeCredits += volumeCreditsFor(perf);
+
+    result += `  ${playFor(perf).name}: ${formatUSD(amountFor(perf) / 100)} (${perf.audience} seats)\n`;
+    totalAmount += amountFor(perf);
+  }
+  result += `Amount owed is ${formatUSD(totalAmount / 100)}\n`;
+  result += `You earned ${volumeCredits} credits\n`;
+  return result;
+```
+#### 對 formatUSD 使用 [Replace Temp with Query](https://memberservices.informit.com/my_account/webedition/9780135425664/html/replacetempwithquery.html)
+記得要刪掉原本的 temp 變數
+```javascript
+const statement = (invoice, plays) => {
+
+  const playFor = aPerformance => plays[aPerformance.playID];
+
+  const amountFor = (perf, play) => { /*...*/ }
+
+  const volumeCreditsFor = (aPerformance) => { /*...*/ }
+
+  const usd = (aNumber) => {
+    return new Intl.NumberFormat('en-US',{
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(aNumber/100)
+  }
+
+  let totalAmount = 0;
+  let volumeCredits = 0;
+  let result = `Statement for ${invoice.customer}\n`;
+
+  for (let i = 0; i <= invoice.performances.length - 1; i += 1) {
+    const perf = invoice.performances[i];
+
+    volumeCredits += volumeCreditsFor(perf);
+
+    result += `  ${playFor(perf).name}: ${usd(amountFor(perf))} (${perf.audience} seats)\n`;
+    totalAmount += amountFor(perf);
+  }
+  result += `Amount owed is ${usd(totalAmount)}\n`;
+  result += `You earned ${volumeCredits} credits\n`;
+  return result;
+```
+
+#### 處理 `for` 迴圈
+這裡利用 [Split Loop](https://memberservices.informit.com/my_account/webedition/9780135425664/html/opening.html#DecomposingTheStatementFunction) ，將 `for` 迴圈內做的不同事情分開（計算 `volumeCredits` 和 `totalAmount`）
+```javascript
+const statement = (invoice, plays) => {
+
+  const playFor = aPerformance => plays[aPerformance.playID];
+
+  const amountFor = (perf, play) => { /*...*/ }
+
+  const volumeCreditsFor = (aPerformance) => { /*...*/ }
+
+  const usd = (aNumber) => { /*...*/ }
+
+  let result = `Statement for ${invoice.customer}\n`;
+
+  let totalAmount = 0;
+  for (let i = 0; i <= invoice.performances.length - 1; i += 1) {
+    const perf = invoice.performances[i];
+
+    result += `  ${playFor(perf).name}: ${usd(amountFor(perf))} (${perf.audience} seats)\n`;
+    totalAmount += amountFor(perf);
+  }
+
+  let volumeCredits = 0;
+  for (let i = 0; i <= invoice.performances.length - 1; i += 1) {
+    const perf = invoice.performances[i];
+
+    volumeCredits += volumeCreditsFor(perf);
+  }
+  result += `Amount owed is ${usd(totalAmount)}\n`;
+  result += `You earned ${volumeCredits} credits\n`;
+  return result;
+```
+上方用到一個小技巧 [Slide Statements](https://memberservices.informit.com/my_account/webedition/9780135425664/html/slidestatements.html) 用意是將同類型的變數擺在一起，例如上方的 `volumeCredits` 置於計算他的 `for` 迴圈之上。
+
+接下來使用 [Extract Function](https://memberservices.informit.com/my_account/webedition/9780135425664/html/extractfunction.html) 將他們各自抽出
+```javascript
+const statement = (invoice, plays) => {
+
+  const playFor = aPerformance => plays[aPerformance.playID];
+
+  const amountFor = (perf, play) => { /*...*/ }
+
+  const volumeCreditsFor = (aPerformance) => { /*...*/ }
+
+  const usd = (aNumber) => { /*...*/ }
+
+  const totalVolumeCredits = () => {
+    let result = 0;
+    for (let i = 0; i <= invoice.performances.length - 1; i += 1) {
+      const perf = invoice.performances[i];
+      result += volumeCreditsFor(perf);
+    }
+    return result;
+  }
+
+  const getTotalAmount = () => {
+    let result = 0;
+    for (let i = 0; i <= invoice.performances.length - 1; i += 1) {
+      const perf = invoice.performances[i];
+      result += amountFor(perf);
+    }
+    return result;
+  }
+
+  let result = `Statement for ${invoice.customer}\n`;
+
+  for (let i = 0; i <= invoice.performances.length - 1; i += 1) {
+    const perf = invoice.performances[i];
+    result += `  ${playFor(perf).name}: ${usd(amountFor(perf))} (${perf.audience} seats)\n`;
+  }
+
+  result += `Amount owed is ${usd(totalAmount())}\n`;
+  result += `You earned ${totalVolumeCredits()} credits\n`;
+  return result;
+```
+一樣 combo [Inline Variable](https://memberservices.informit.com/my_account/webedition/9780135425664/html/inlinevariable.html) 處理 `totalAmount` 和 `volumeCredits`
+
+> 這裡和上方的 `playFor` 相同，因為重構都重複執行了原本只需執行一次的部分，但在重構的階段性能是次級重要的，當程式重構完成，變得清晰有條理時便會很方便地再進行調整性能，但我們不能為了維持性能而讓程式呈現雜亂的樣子。
+
+> 到此為止可以發現，重構是有邏輯性的，首先觀察 `for` 迴圈，使用 [Split Loop](https://memberservices.informit.com/my_account/webedition/9780135425664/html/opening.html#DecomposingTheStatementFunction) 取出功能不同的部分，再將以 [Slide Statements](https://memberservices.informit.com/my_account/webedition/9780135425664/html/slidestatements.html) 將同類型的變數放一起， 接著便能使用  [Extract Function](https://memberservices.informit.com/my_account/webedition/9780135425664/html/extractfunction.html) 將他們各自抽出 ，最後一步則是 [Inline Variable](https://memberservices.informit.com/my_account/webedition/9780135425664/html/inlinevariable.html) 處理 temp 的變數。 
+
+經過上方，便能讓 `statement` 的執行結構清晰明瞭，也更能了解整體的執行功能。
 
 ## 總心得
 1. 電腦不會在乎程式的好不好看，不論如何只要語法正確都可以執行，但當需求改變時，我們會接觸程式，也會在乎。
