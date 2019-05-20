@@ -439,7 +439,7 @@ const statement = (invoice, plays) => {
     return result;
   }
 
-  const getTotalAmount = () => {
+  const totalAmount = () => {
     let result = 0;
     for (let i = 0; i <= invoice.performances.length - 1; i += 1) {
       const perf = invoice.performances[i];
