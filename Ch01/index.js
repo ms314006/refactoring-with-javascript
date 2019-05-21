@@ -3,7 +3,8 @@ const statement = (invoice, plays) => {
   let totalAmount = 0;
   let volumeCredits = 0;
   let result = `Statement for ${invoice.customer}\n`;
-  const formatUSD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, }).format;
+  const formatUSD = new Intl.NumberFormat('en-US',
+    { style: 'currency', currency: 'USD', minimumFractionDigits: 2, }).format;
 
   for (let i = 0; i <= invoice.performances.length - 1; i += 1) {
     const perf = invoice.performances[i];
@@ -102,10 +103,8 @@ const statement = (invoice, plays) => {
     return result;
   };
 
-  const usd = (aNumber) => {
-    return new Intl.NumberFormat('en-US',
-      { style: 'currency', currency: 'USD', minimumFractionDigits: 2, }).format(aNumber / 100);
-  };
+  const usd = aNumber => new Intl.NumberFormat('en-US',
+    { style: 'currency', currency: 'USD', minimumFractionDigits: 2, }).format(aNumber / 100);
 
   const volumeCreditsFor = (perf) => {
     let result = 0;
