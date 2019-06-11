@@ -160,4 +160,4 @@ const createStatementData = (invoice, plays) => {
   return statementData;
 };
 ```
-
+然後，我們我們已經把計算 `amount` 和 `volumeCredits` 的邏輯
